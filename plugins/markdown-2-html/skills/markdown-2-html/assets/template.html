@@ -316,6 +316,9 @@ body { margin: 0; background: var(--hs-bg); color: var(--hs-text); font: 16px/1.
 .hs-doc tbody tr:hover { background: color-mix(in srgb, var(--hs-accent) 7%, transparent); }
 .hs-doc tbody tr:last-child td { border-bottom: 0; }
 .hs-doc td:first-child > code:only-child { white-space: nowrap; }
+/* 首列最多占表宽一半：自然排版超过一半时脚本加 .is-capped，首列定为一半宽并允许换行（压过 .lead 等的不换行） */
+.hs-doc .hs-table.is-capped :is(th, td):first-child { width: 50%; white-space: normal; }
+.hs-doc .hs-table.is-capped td:first-child > code:only-child { white-space: normal; }
 /* 网页全屏（图表与表格共用）：用 fixed 浮层铺满当前窗口，不调用浏览器全屏，视口不变，页面其余部分不重排。
    浮层强制去掉外边距，不受所在上下文（如 details 子元素的边距）影响 */
 :is(.hs-zoom, .hs-table-box).is-full { margin: 0 !important; }
@@ -976,6 +979,18 @@ body { margin: 0; background: var(--hs-bg); color: var(--hs-text); font: 16px/1.
     };
     label(false);
     btn.addEventListener('click', bindFullscreen(box, label));
+
+    // 首列最多占一半：先撤掉限制按自然排版量首格，超过表宽一半再加上。
+    // 加载时先量一次（页面在后台时 ResizeObserver 不回调）；之后容器尺寸变化（展开折叠、全屏、窗口缩放）再量，
+    // 切换类名不改变容器宽度，不会反复触发
+    const head = t.querySelector('table')?.rows[0];
+    if (!head || head.cells.length < 2) return;
+    const capFirstColumn = () => {
+      t.classList.remove('is-capped');
+      t.classList.toggle('is-capped', head.cells[0].offsetWidth > head.offsetWidth / 2);
+    };
+    capFirstColumn();
+    new ResizeObserver(capFirstColumn).observe(t);
   });
 })();
 </script>
