@@ -1,4 +1,4 @@
-// 行内扩展：:ok[完成] 状态标签、:m[实] 图例记号、:kbd[Shift]、:k[会议] 标签字、:icon[warn]，以及链接属性 [文字](url){.pill .warn}
+// 行内扩展：:ok[完成] 状态标签、:m[事实] 图例记号、:kbd[Shift]、:k[会议] 标签字、:icon[warn]，以及链接属性 [文字](url){.pill .warn}
 import { KINDS, escapeHtml, parseAttrs } from '../util.mjs';
 
 const NAMES = new Set([...KINDS, 'm', 'kbd', 'k', 'icon']);

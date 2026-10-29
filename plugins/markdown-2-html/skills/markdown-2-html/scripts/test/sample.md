@@ -3,14 +3,14 @@ title: 语法样例
 meta: 用例 · [来源](https://example.com) · 2026-10-04
 toc: [2, 3, 4]
 marks:
-  实: {kind: ok, title: 事实：代码可证}
+  事实: {kind: ok, title: 代码可证}
 ---
 # 冒烟测试文档
 
 ## 结论 {#s1}
 
 > [!key] 结论
-> ==重点句==，**术语**“引号”**后文**。:m[实] 见 [](#s2-1) 与 [自定义](#s2)。
+> ==重点句==，**术语**“引号”**后文**。:m[事实] 见 [](#s2-1) 与 [自定义](#s2)。
 
 > [!info] 文档说明
 > 来源
@@ -68,7 +68,7 @@ Alice -> Bob : 你好
 title: 'Genshin Impact' Talk
 sub: 《原神》演讲
 讲者: Xin Ning
-仅会员: :warn[是]
+访问: :warn[仅会员]
 links: [视频（仅会员）](https://gdcvault.com/x){.warn} [PPT](https://gdcvault.com/y)
 note: （会员限定，简介不可获取）
 
