@@ -1,14 +1,14 @@
 {
-  "name": "markdown-2-html-aiplugin",
+  "name": "markdown-publisher-aiplugin",
   "interface": {
-    "displayName": "Markdown-2-HTML AIPlugin"
+    "displayName": "Markdown-Publisher AIPlugin"
   },
   "plugins": [
     {
-      "name": "markdown-2-html",
+      "name": "markdown-publisher",
       "source": {
         "source": "local",
-        "path": "./plugins/markdown-2-html"
+        "path": "./plugins/markdown-publisher"
       },
       "policy": {
         "installation": "AVAILABLE",
