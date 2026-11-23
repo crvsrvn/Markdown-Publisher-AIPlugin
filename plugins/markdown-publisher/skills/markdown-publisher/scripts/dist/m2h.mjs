@@ -220414,7 +220414,7 @@ function measureText(text2, familyList, size, bold2) {
 // src/plantuml.mjs
 var ROOT = join2(dirname(fileURLToPath(import.meta.url)), "..");
 var ENGINE = "@plantuml/core 1.2026.8";
-var CACHE_DIR = join2(tmpdir(), "markdown-publisher", "plantuml-v2");
+var CACHE_DIR = join2(tmpdir(), "markdown-publisher", "plantuml-v3");
 var SVG_NS = "http://www.w3.org/2000/svg";
 var originalLog = console.log;
 var enginePromise = null;
@@ -220479,17 +220479,49 @@ function drawnWarnings(svg) {
   if (!m || !/stroke="#FFDD88"/i.test(m[1]) || !/fill="#FFFFCC"/i.test(m[1])) return [];
   return [...m[2].matchAll(/<text\b[^>]*>([^<]*)<\/text>/g)].map((t) => decodeText(t[1]).trim());
 }
+var drawSvg = (engine, source) => muted(() => new Promise((resolve4, reject) => engine.renderToString(source.split(/\r?\n/), resolve4, (message) => reject(new Error(`PlantUML \u6E32\u67D3\u5931\u8D25\uFF1A${message}`)))));
+var NOTE_HEAD = /^\s*(?:floating )?note\s*(?:left|right)?\b(?:[^:{]*:|\s*(?:\$\S+\s*)*(?:<<.*>>)?\s*(?:#\S+)?\s*$)/i;
+var NOTE_MARK = 40960;
+var INVALID_LINE = "@@@";
+async function lostNotes(engine, source) {
+  if (!/else\s*if/i.test(source) || !/^\s*end\s*if\b/im.test(source)) return [];
+  const lines = source.split(/\r?\n/);
+  const notes = lines.map((_, i) => i).filter((i) => NOTE_HEAD.test(lines[i]));
+  if (!notes.length) return [];
+  const markOf = (i) => String.fromCharCode(NOTE_MARK + i);
+  const marked = lines.map((line, i) => {
+    const head = NOTE_HEAD.exec(line)?.[0];
+    if (!head) return line;
+    return head.endsWith(":") ? `${head} ${markOf(i)} ${line.slice(head.length)}` : `${line}
+${markOf(i)}`;
+  }).join("\n");
+  const drawn = await drawSvg(engine, marked);
+  if (syntaxError(drawn, marked)) return [];
+  const lost = [];
+  for (const i of notes) {
+    if (drawn.includes(markOf(i))) continue;
+    const broken = [...lines.slice(0, i), INVALID_LINE, ...lines.slice(i)].join("\n");
+    if (syntaxError(await drawSvg(engine, broken), broken)) lost.push(`\u56FE\u6E90\u7801\u7B2C ${i + 1} \u884C\uFF1A${lines[i].trim()}`);
+  }
+  return lost;
+}
 async function renderPlantUml(source) {
   const file = join2(CACHE_DIR, hashOf(`${ENGINE}
 ${source}`) + ".svg");
   if (existsSync(file)) return readFileSync2(file, "utf8");
   const engine = await loadEngine();
-  const svg = await muted(() => new Promise((resolve4, reject) => engine.renderToString(source.split(/\r?\n/), resolve4, (message) => reject(new Error(`PlantUML \u6E32\u67D3\u5931\u8D25\uFF1A${message}`)))));
+  const svg = await drawSvg(engine, source);
   const error = syntaxError(svg, source);
   if (error) throw new Error(`PlantUML \u6E32\u67D3\u5931\u8D25\uFF1A${error}`);
   const warnings2 = drawnWarnings(svg);
   if (warnings2.length) throw new Error(`PlantUML \u8B66\u544A\uFF08\u4F1A\u753B\u8FDB\u56FE\u91CC\uFF09\uFF1A
   ${warnings2.join("\n  ")}`);
+  const lost = await lostNotes(engine, source);
+  if (lost.length) {
+    throw new Error(`PlantUML \u7684 note \u6CA1\u6709\u753B\u51FA\u6765\uFF08\u5F15\u64CE\u4F1A\u4E22\u5F03\u6302\u5728\u5E26 elseif \u7684 if \u4E0A\u7684 note\uFF09\uFF1A
+  ${lost.join("\n  ")}
+  \u6539\u6CD5\uFF1A\u628A note \u79FB\u5230\u67D0\u4E2A\u5206\u652F\u7684\u52A8\u4F5C\u4E4B\u540E\uFF0C\u6216\u628A elseif \u6539\u6210\u5D4C\u5957\u7684 else + if \u2026 endif`);
+  }
   mkdirSync(CACHE_DIR, { recursive: true });
   writeFileSync(file, svg);
   return svg;
@@ -220505,7 +220537,7 @@ function decodePlantUmlSrc(encoded) {
 }
 
 // src/render.mjs
-var VERSION = "3.0.0";
+var VERSION = "3.0.1";
 var GENERATOR = `Markdown-Publisher/${VERSION}`;
 var SCRIPTS = join3(dirname2(fileURLToPath2(import.meta.url)), "..");
 var ASSETS = join3(SCRIPTS, "..", "assets");

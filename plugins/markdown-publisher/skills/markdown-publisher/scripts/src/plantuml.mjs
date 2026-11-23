@@ -12,8 +12,8 @@ import { measureText } from './fonts.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ENGINE = '@plantuml/core 1.2026.8';
-// v2：旧缓存里可能有带警告的 SVG，换目录使其失效；缓存键另含引擎版本
-const CACHE_DIR = join(tmpdir(), 'markdown-publisher', 'plantuml-v2');
+// v3：旧缓存里可能有丢了 note 的 SVG，换目录使其失效；缓存键另含引擎版本
+const CACHE_DIR = join(tmpdir(), 'markdown-publisher', 'plantuml-v3');
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const originalLog = console.log;
 
@@ -83,17 +83,55 @@ function drawnWarnings(svg) {
   return [...m[2].matchAll(/<text\b[^>]*>([^<]*)<\/text>/g)].map(t => decodeText(t[1]).trim());
 }
 
-// 渲染单张图，返回 SVG 字符串；语法错误时抛出带行号的异常；有警告时也抛出，因为引擎会把警告画进图里
+const drawSvg = (engine, source) => muted(() => new Promise((resolve, reject) =>
+  engine.renderToString(source.split(/\r?\n/), resolve, message => reject(new Error(`PlantUML 渲染失败：${message}`)))));
+
+// 活动图里 note 的首行：单行写法到冒号为止；多行写法整行，后面不能有别的内容（<style> 里的 note { 不算）
+const NOTE_HEAD = /^\s*(?:floating )?note\s*(?:left|right)?\b(?:[^:{]*:|\s*(?:\$\S+\s*)*(?:<<.*>>)?\s*(?:#\S+)?\s*$)/i;
+const NOTE_MARK = 0xa000; // 从彝文音节区起，按行下标给每个 note 一个字符作标记，不会被换行拆开
+const INVALID_LINE = '@@@';
+
+// 活动图的 if 带 elseif 时，引擎会丢弃挂在整个 if 上的 note，不报错也不警告。
+// 给每个 note 的文字前加一个标记字符再画一次，没画出来的就是丢了的；返回它们的行号与首行。
+async function lostNotes(engine, source) {
+  // 要求有 endif 行，排除时序图里 alt 的 else if
+  if (!/else\s*if/i.test(source) || !/^\s*end\s*if\b/im.test(source)) return [];
+  const lines = source.split(/\r?\n/);
+  const notes = lines.map((_, i) => i).filter(i => NOTE_HEAD.test(lines[i]));
+  if (!notes.length) return [];
+  const markOf = i => String.fromCharCode(NOTE_MARK + i);
+  const marked = lines.map((line, i) => {
+    const head = NOTE_HEAD.exec(line)?.[0];
+    if (!head) return line;
+    return head.endsWith(':') ? `${head} ${markOf(i)} ${line.slice(head.length)}` : `${line}\n${markOf(i)}`;
+  }).join('\n');
+  const drawn = await drawSvg(engine, marked);
+  if (syntaxError(drawn, marked)) return [];
+  const lost = [];
+  for (const i of notes) {
+    if (drawn.includes(markOf(i))) continue;
+    // 块注释、未成立的 !if、未调用的 !procedure 里的 note 本来就不画：在那里插入错误行不会报语法错误
+    const broken = [...lines.slice(0, i), INVALID_LINE, ...lines.slice(i)].join('\n');
+    if (syntaxError(await drawSvg(engine, broken), broken)) lost.push(`图源码第 ${i + 1} 行：${lines[i].trim()}`);
+  }
+  return lost;
+}
+
+// 渲染单张图，返回 SVG 字符串；语法错误、引擎丢了 note 时抛出带行号的异常；有警告时也抛出，因为引擎会把警告画进图里
 export async function renderPlantUml(source) {
   const file = join(CACHE_DIR, hashOf(`${ENGINE}\n${source}`) + '.svg');
   if (existsSync(file)) return readFileSync(file, 'utf8');
   const engine = await loadEngine();
-  const svg = await muted(() => new Promise((resolve, reject) =>
-    engine.renderToString(source.split(/\r?\n/), resolve, message => reject(new Error(`PlantUML 渲染失败：${message}`)))));
+  const svg = await drawSvg(engine, source);
   const error = syntaxError(svg, source);
   if (error) throw new Error(`PlantUML 渲染失败：${error}`);
   const warnings = drawnWarnings(svg);
   if (warnings.length) throw new Error(`PlantUML 警告（会画进图里）：\n  ${warnings.join('\n  ')}`);
+  const lost = await lostNotes(engine, source);
+  if (lost.length) {
+    throw new Error(`PlantUML 的 note 没有画出来（引擎会丢弃挂在带 elseif 的 if 上的 note）：\n  ${lost.join('\n  ')}\n`
+      + '  改法：把 note 移到某个分支的动作之后，或把 elseif 改成嵌套的 else + if … endif');
+  }
   mkdirSync(CACHE_DIR, { recursive: true });
   writeFileSync(file, svg);
   return svg;
