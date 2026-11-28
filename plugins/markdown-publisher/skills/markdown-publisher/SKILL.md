@@ -1,6 +1,6 @@
 ---
 name: markdown-publisher
-description: 读写任何文档之前必须使用——方案、报告、说明、教程、README、技术文档、Markdown 文件，以及“做成文档 / 做成 HTML / 导出给别人看 / 发布到飞书”的请求。文档一律用 Markdown（.md）读写；定稿后用本插件导出 html-style 风格的单文件 HTML 给人阅读（右侧大纲、自动序号、提示块与状态标签、PlantUML 图可缩放全屏）。用户要求时也可发布为飞书云文档。AI 不读取、不修改本插件生成的 HTML（head 里带 generator=Markdown-Publisher 或旧名 Markdown-2-HTML 标记），只读写它对应的 .md。也用于把旧版 html-style HTML 页面迁移成 Markdown。
+description: 读写任何文档之前必须使用——报告、说明、教程、README、技术文档、Markdown 文件，以及“做成文档 / 做成 HTML / 导出给别人看 / 发布到飞书”的请求。回答中给出的小型方案、计划、分析不算文档：用户未明确要求写成文档或文件时，直接写在回答里，不使用本技能、不新建 .md。文档一律用 Markdown（.md）读写；定稿后用本插件导出 html-style 风格的单文件 HTML 给人阅读（右侧大纲、自动序号、提示块与状态标签、PlantUML 图可缩放全屏）。用户要求时也可发布为飞书云文档。AI 不读取、不修改本插件生成的 HTML（head 里带 generator=Markdown-Publisher 或旧名 Markdown-2-HTML 标记），只读写它对应的 .md。也用于把旧版 html-style HTML 页面迁移成 Markdown。
 ---
 
 # Markdown-Publisher
